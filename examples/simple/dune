@@ -1,0 +1,17 @@
+(executable
+  (name js)
+  (modules js)
+  (modes byte)
+  (preprocess (pps js_of_ocaml-ppx)))
+
+(rule
+  (mode (promote))
+  (targets str.js str.d.ts)
+  (deps (glob_files prim.js))
+  (action
+    (progn
+      (run %{bin:js_of_ocaml}
+           %{dep:js.bc}
+           -o str.js)
+      (with-outputs-to str.d.ts
+                       (bash "%{bin:dts_of_ocaml} $(find . -name '*Js.cmt')")))))
