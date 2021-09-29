@@ -1,5 +1,6 @@
 open Collect
 open Typegen
+open Typeprint
 open Util
 
 let pp_jsoo_export f { name; ty; jsdoc } =

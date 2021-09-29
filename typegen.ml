@@ -1,5 +1,4 @@
 open Types
-open Util
 
 type ts_type =
   | TsBool
@@ -68,7 +67,7 @@ let rec tygen t =
     (* [Ttuple [t1;...;tn]] ==> [(t1 * ... * tn)] *)
     | Ttuple ts -> TsTup (List.map go' ts)
     (* [Tconstr (`A.B.t', [t1;...;tn], _)] ==> [(t1,...,tn) A.B.t] *)
-    | Tconstr (t, tps, _) -> tygen_poly' (Path.name t) (List.map tygen tps)
+    | Tconstr (t, tps, _) -> tygen_poly' (Path.name t) (List.map go' tps)
     (* [Tobject (`f1:t1;...;fn: tn', `None')] ==> [< f1: t1; ...; fn: tn >]
        f1, fn are represented as a linked list of types using Tfield and Tnil
        constructors.
@@ -87,7 +86,7 @@ let rec tygen t =
        where [rv] is the hidden row variable. *)
     | Tobject (t1, t2) -> (
         match !t2 with
-        | Some (t, tps) -> tygen_poly' (Path.name t) (List.map tygen tps)
+        | Some (t, tps) -> tygen_poly' (Path.name t) (List.map go' tps)
         | None ->
             let rec walk_fields all t =
               match t.desc with
@@ -106,12 +105,12 @@ let rec tygen t =
             TsRecord fields)
     | Tfield _ | Tnil -> failwith "unexpected field/nil outside record"
     (* Indirection *)
-    | Tlink t | Tsubst t -> tygen t
+    | Tlink t | Tsubst t -> go' t
     | Tvariant _ -> failwith "cannot translate polymorphic variants"
     | Tunivar _ -> failwith "cannot translate universal quantifiers"
     (* [Tpoly (ty,tyl)] ==> ['a1... 'an. ty] *)
-    | Tpoly (t, []) -> tygen t
-    | Tpoly (t, tps) -> TsTyApp (tygen t, List.map tygen tps)
+    | Tpoly (t, []) -> go' t
+    | Tpoly (t, tps) -> TsTyApp (go' t, List.map go' tps)
     | Tpackage _ -> failwith "cannot translate packages"
   in
   let noop () = () in
@@ -132,59 +131,3 @@ and tygen_tapp ~set_readonly_prop name typarams =
   | `Name name, [] -> failwith ("cannot translate raw name " ^ name)
   | `Name name, _ -> failwith ("cannot translate raw polymorphic " ^ name)
   | _ -> failwith "malformed type"
-
-let pp_ts_type f =
-  let open Format in
-  let rec go = function
-    | TsNumber -> pp_print_string f "number"
-    | TsString -> pp_print_string f "string"
-    | TsBool -> pp_print_string f "boolean"
-    | TsNull -> pp_print_string f "null"
-    | TsUndefined -> pp_print_string f "undefined"
-    | TsArrow { param; param_optional; param_ty; ret_ty } ->
-        let param = Option.value param ~default:"_" in
-        let opt = if param_optional then "?" else "" in
-        fprintf f "@[<hov 2>(%s%s: " param opt;
-        go param_ty;
-        fprintf f ") =>@ ";
-        go ret_ty;
-        fprintf f "@]"
-    | TsArray t ->
-        if is_array_complex_type t then (
-          fprintf f "@[<hov 2>Array<@,";
-          go t;
-          fprintf f ">@]")
-        else if is_array_parened_type t then (
-          fprintf f "@[(";
-          go t;
-          fprintf f ")[]@]")
-        else (
-          fprintf f "@[";
-          go t;
-          fprintf f "[]@]")
-    | TsTup ts ->
-        fprintf f "@[(@[<hov>";
-        pp_list f go ",@ " ts;
-        fprintf f "@])@]"
-    | TsRecord fields ->
-        fprintf f "@[{ @[<hov>";
-        pp_list f
-          (fun { name; readonly; ty } ->
-            let readonly = if readonly then "readonly " else "" in
-            fprintf f "@[<hov 2>%s%s:@ " readonly name;
-            go ty;
-            fprintf f "@]")
-          ",@ " fields;
-        fprintf f "@] }@]"
-    | TsTyApp (t, tps) ->
-        fprintf f "@[";
-        go t;
-        fprintf f "<@[<hov>";
-        pp_list f go ",@ " tps;
-        fprintf f "@]>@]"
-    | TsUnion ts ->
-        fprintf f "@[";
-        pp_list f go "@,|" ts;
-        fprintf f "@]"
-  in
-  go

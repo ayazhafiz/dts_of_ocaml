@@ -31,3 +31,10 @@ let _ =
     (Js.array
        (Array.map Js.string [| "zz-magic1"; "proofs-are-pudding" |])
      [@jsdoc "Magical strings"])
+
+let a =
+  object%js
+    val bar = Js.string "abc"
+  end
+
+let _ = Js.export "foo" a
