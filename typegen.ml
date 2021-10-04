@@ -12,6 +12,7 @@ type ts_type =
       param_ty : ts_type;
       ret_ty : ts_type;
     }
+  | TsFun of (string option * bool * ts_type) list * ts_type
   | TsArray of ts_type
   | TsTup of ts_type list
   | TsRecord of ts_record_field list
@@ -19,20 +20,6 @@ type ts_type =
   | TsUnion of ts_type list
 
 and ts_record_field = { name : string; readonly : bool; ty : ts_type }
-
-(** Determines whether an array type is "complex". A type is complex if we
-    prefer to emit [ Array<T> ] over [ T[] ]. *)
-let rec is_array_complex_type = function
-  | TsNumber | TsString | TsBool | TsNull | TsUndefined -> false
-  | TsArrow _ | TsRecord _ | TsTyApp _ -> true
-  | TsArray t -> is_array_complex_type t (* inhereted *)
-  | TsTup ts | TsUnion ts -> List.exists is_array_complex_type ts
-
-let is_array_parened_type = function
-  | TsNumber | TsString | TsBool | TsNull | TsUndefined | TsRecord _ | TsTyApp _
-  | TsArray _ | TsTup _ ->
-      false
-  | TsArrow _ | TsUnion _ -> true
 
 let get_jsoo_name = function
   | "Js_of_ocaml.Js.t" -> `JsType
@@ -131,3 +118,26 @@ and tygen_tapp ~set_readonly_prop name typarams =
   | `Name name, [] -> failwith ("cannot translate raw name " ^ name)
   | `Name name, _ -> failwith ("cannot translate raw polymorphic " ^ name)
   | _ -> failwith "malformed type"
+
+let rec linearize_arrows t =
+  match t with
+  | TsBool | TsNumber | TsString | TsNull | TsUndefined -> t
+  | TsArrow _ ->
+      let rec walk = function
+        | TsArrow { param; param_optional; param_ty; ret_ty } ->
+            let params, ret = walk ret_ty in
+            ((param, param_optional, param_ty) :: params, ret)
+        | fin -> ([], fin)
+      in
+      let params, ret = walk t in
+      TsFun (params, ret)
+  | TsFun (params, ret) ->
+      TsFun
+        ( List.map (fun (p, o, t) -> (p, o, linearize_arrows t)) params,
+          linearize_arrows ret )
+  | TsArray t -> TsArray (linearize_arrows t)
+  | TsTup ts -> TsTup (List.map linearize_arrows ts)
+  | TsRecord fs ->
+      TsRecord (List.map (fun f -> { f with ty = linearize_arrows f.ty }) fs)
+  | TsTyApp (t, ts) -> TsTyApp (linearize_arrows t, List.map linearize_arrows ts)
+  | TsUnion ts -> TsUnion (List.map linearize_arrows ts)

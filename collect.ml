@@ -8,6 +8,7 @@ type texp_apply = { head : expression; args : expression option list }
 type jsoo_export = {
   name : string;
   ty : Types.type_expr;
+  shape : Typedtree.expression_desc;
   jsdoc : string option;
 }
 
@@ -105,5 +106,11 @@ let get_export_of_texp_apply { head; args } =
         export_expr.exp_attributes |> List.filter_map get_jsdoc_of_annotation
       in
       let jsdoc = List.nth_opt jsdoc 0 in
-      Some { name = export_name; ty = export_expr.exp_type; jsdoc }
+      Some
+        {
+          name = export_name;
+          ty = export_expr.exp_type;
+          shape = export_expr.exp_desc;
+          jsdoc;
+        }
   | _ -> None

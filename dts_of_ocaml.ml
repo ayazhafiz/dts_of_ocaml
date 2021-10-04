@@ -3,12 +3,12 @@ open Typegen
 open Typeprint
 open Util
 
-let pp_jsoo_export f { name; ty; jsdoc } =
+let pp_jsoo_export f { name; ty; jsdoc; _ } =
   let open Format in
   fprintf f "@[<v 0>";
   Option.iter (fprintf f "@[/** %s */@]@,") jsdoc;
   fprintf f "@[<hov 2>export declare const %s:@ " name;
-  tygen ty |> pp_ts_type f;
+  tygen ty |> linearize_arrows |> pp_ts_type f;
   fprintf f "@]@,@]"
 
 let pp_all_jsoo_exports f exports =
