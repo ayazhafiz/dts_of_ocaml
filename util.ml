@@ -1,3 +1,5 @@
+open Types
+
 let default_width = 80
 
 let with_formatter cb =
@@ -16,3 +18,28 @@ let pp_list f printer sep lst =
       printer item;
       if i <> lasti then Format.fprintf f sep)
     lst
+
+let sprintf = Printf.sprintf
+
+let printtyp t =
+  let b = Buffer.create 16 in
+  let f = Format.formatter_of_buffer b in
+  Printtyp.type_expr f t;
+  Format.pp_print_flush f ();
+  Buffer.to_seq b |> String.of_seq
+
+let typkind t =
+  match t.desc with
+  | Tvar _ -> "var"
+  | Tarrow _ -> "arrow"
+  | Ttuple _ -> "tuple"
+  | Tconstr _ -> "constr"
+  | Tobject _ -> "object"
+  | Tfield _ -> "field"
+  | Tnil -> "nil"
+  | Tlink _ -> "link"
+  | Tsubst _ -> "subst"
+  | Tvariant _ -> "variant"
+  | Tunivar _ -> "univar"
+  | Tpoly _ -> "poly"
+  | Tpackage _ -> "package"

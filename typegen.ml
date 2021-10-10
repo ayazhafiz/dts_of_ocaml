@@ -1,4 +1,5 @@
 open Types
+open Util
 
 type ts_type =
   | TsBool
@@ -86,7 +87,11 @@ let rec tygen t =
                   walk_fields (f :: all) rst
               (* [Tnil] ==> [<...; >] *)
               | Tnil -> all
-              | _ -> failwith "unexpected type in record"
+              | Tlink t | Tsubst t -> walk_fields all t
+              | _ ->
+                  failwith
+                    (sprintf "unexpected type (%s) %s in record" (typkind t)
+                       (printtyp t))
             in
             let fields = walk_fields [] t1 |> List.rev in
             TsRecord fields)
