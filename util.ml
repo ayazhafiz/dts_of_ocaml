@@ -29,7 +29,7 @@ let printtyp t =
   Buffer.to_seq b |> String.of_seq
 
 let typkind t =
-  match t.desc with
+  match get_desc t with
   | Tvar _ -> "var"
   | Tarrow _ -> "arrow"
   | Ttuple _ -> "tuple"

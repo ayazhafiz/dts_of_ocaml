@@ -33,10 +33,10 @@ let get_jsoo_name = function
   | n -> `Name n
 
 let rec tygen t =
-  let rec go ~set_readonly_prop t =
-    let go' = go ~set_readonly_prop in
+  let rec go ~set_readonly_prop desc =
+    let go' t = go ~set_readonly_prop (get_desc t) in
     let tygen_poly' = tygen_tapp ~set_readonly_prop in
-    match t.desc with
+    match desc with
     (* [Tvar (Some "a")] ==> ['a] or ['_a] *)
     | Tvar (Some _) -> failwith "cannot translate type variables"
     (* [Tvar None]       ==> [_] *)
@@ -77,17 +77,17 @@ let rec tygen t =
         | Some (t, tps) -> tygen_poly' (Path.name t) (List.map go' tps)
         | None ->
             let rec walk_fields all t =
-              match t.desc with
+              match get_desc t with
               (* [Tfield ("foo", Fpresent, t, ts)] ==> [<...; foo : t; ts>] *)
               | Tfield (f, _, t, rst) ->
                   let readonly_prop = ref false in
                   let set_readonly_prop () = readonly_prop := true in
-                  let ty = go ~set_readonly_prop t in
+                  let ty = go ~set_readonly_prop (get_desc t) in
                   let f = { name = f; readonly = !readonly_prop; ty } in
                   walk_fields (f :: all) rst
               (* [Tnil] ==> [<...; >] *)
               | Tnil -> all
-              | Tlink t | Tsubst t -> walk_fields all t
+              | Tlink t | Tsubst (t, _) -> walk_fields all t
               | _ ->
                   failwith
                     (sprintf "unexpected type (%s) %s in record" (typkind t)
@@ -97,7 +97,7 @@ let rec tygen t =
             TsRecord fields)
     | Tfield _ | Tnil -> failwith "unexpected field/nil outside record"
     (* Indirection *)
-    | Tlink t | Tsubst t -> go' t
+    | Tlink t | Tsubst (t, _) -> go' t
     | Tvariant _ -> failwith "cannot translate polymorphic variants"
     | Tunivar _ -> failwith "cannot translate universal quantifiers"
     (* [Tpoly (ty,tyl)] ==> ['a1... 'an. ty] *)
@@ -106,7 +106,7 @@ let rec tygen t =
     | Tpackage _ -> failwith "cannot translate packages"
   in
   let noop () = () in
-  go ~set_readonly_prop:noop t
+  go ~set_readonly_prop:noop (get_desc t)
 
 and tygen_tapp ~set_readonly_prop name typarams =
   let name = get_jsoo_name name in

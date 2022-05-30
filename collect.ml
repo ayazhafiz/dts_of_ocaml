@@ -36,8 +36,7 @@ let collect_apply_of_exp exp =
     | Texp_sequence (e1, e2) -> List.fold_left go all [ e1; e2 ]
     | Texp_while (e1, e2) -> List.fold_left go all [ e1; e2 ]
     | Texp_for (_, _, e1, e2, _, e3) -> List.fold_left go all [ e1; e2; e3 ]
-    | Texp_send (e1, _, Some e2) -> List.fold_left go all [ e1; e2 ]
-    | Texp_send (e, _, None) -> go all e
+    | Texp_send (e, _) -> go all e
     | Texp_new _ -> all
     | Texp_instvar _ -> all
     | Texp_setinstvar (_, _, _, e) -> go all e
