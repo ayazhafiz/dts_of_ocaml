@@ -44,7 +44,7 @@ let collect_apply_of_exp exp =
         List.fold_left go all (List.map (fun (_, _, e) -> e) es)
     | Texp_letmodule (_, _, _, _, e) -> go all e
     | Texp_letexception (_, e) -> go all e
-    | Texp_assert e -> go all e
+    | Texp_assert (e, _) -> go all e
     | Texp_lazy e -> go all e
     | Texp_object _ -> all
     | Texp_pack _ -> all
